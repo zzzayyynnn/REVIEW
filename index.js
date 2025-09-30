@@ -12,7 +12,7 @@ const client = new Client({
     partials: [Partials.Channel]
 });
 
-// CONFIG - Test server & channel
+// CONFIG
 const GUILD_ID = '868686126561505280';
 const CHANNEL_ID = '868686126561505282';
 const MASTER_ROLE_ID = '123456789012345678';
@@ -28,7 +28,7 @@ if (fs.existsSync('reviewCounts.json')) {
 client.once('ready', async () => {
     console.log(`Bot is online as ${client.user.tag}`);
 
-    // List connected guilds
+    // Show connected guilds
     console.log('Connected guilds:');
     client.guilds.cache.forEach(guild => {
         console.log(`- ${guild.name} (ID: ${guild.id})`);
@@ -53,6 +53,8 @@ client.on('messageCreate', async message => {
 
             if (!reviewCounts[targetId]) reviewCounts[targetId] = 0;
             reviewCounts[targetId] += 1;
+
+            console.log(`${message.author.username} mentioned ${member.user.username} → counted`);
         });
 
         fs.writeFileSync('reviewCounts.json', JSON.stringify(reviewCounts, null, 2));
