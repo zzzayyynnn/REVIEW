@@ -2,6 +2,7 @@
   "name": "discord-review-bot",
   "version": "1.0.0",
   "private": true,
+  "type": "module",
   "description": "A Discord bot for review management with daily announcements",
   "main": "index.js",
   "scripts": {
