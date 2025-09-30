@@ -12,10 +12,10 @@ const client = new Client({
     partials: [Partials.Channel]
 });
 
-// CONFIG - Locked to specific guild & channel
-const GUILD_ID = '868686126561505280';
-const CHANNEL_ID = '868686126561505282';
-const MASTER_ROLE_ID = '123456789012345678';
+// CONFIG - Locked sa iyong server
+const GUILD_ID = '1397616661024211085';       // Guild ID
+const CHANNEL_ID = '1399357204330451045';     // Announcement channel
+const MASTER_ROLE_ID = '1421545043214340166'; // Master role na ma-ping
 
 let reviewCounts = {};
 let lastMentionTracker = {};
@@ -25,22 +25,12 @@ if (fs.existsSync('reviewCounts.json')) {
     reviewCounts = JSON.parse(fs.readFileSync('reviewCounts.json', 'utf8'));
 }
 
-client.once('ready', async () => {
+client.once('ready', () => {
     console.log(`Bot is online as ${client.user.tag}`);
-
-    // List connected guilds and channels for debug
-    console.log('Connected guilds and channels:');
-    client.guilds.cache.forEach(guild => {
-        console.log(`${guild.name} (ID: ${guild.id})`);
-        guild.channels.cache.forEach(channel => {
-            console.log(`- ${channel.name} (ID: ${channel.id})`);
-        });
-    });
 });
 
 // === AUTO COUNT SA MENTION WITH PER-PAIR COOLDOWN ===
 client.on('messageCreate', async message => {
-    // Restrict to specific guild
     if (!message.guild || message.guild.id !== GUILD_ID) return;
     if (message.author.bot) return;
 
@@ -64,11 +54,11 @@ client.on('messageCreate', async message => {
     }
 });
 
-// === TEST ANNOUNCEMENT EVERY 1 MINUTE ===
-cron.schedule('*/1 * * * *', async () => {
+// === TEST ANNOUNCEMENT EVERY 2 MINUTES ===
+cron.schedule('*/2 * * * *', async () => {
     try {
         const guild = await client.guilds.fetch(GUILD_ID);
-        const channel = guild.channels.cache.get(CHANNEL_ID);
+        const channel = await guild.channels.fetch(CHANNEL_ID);
         if (!channel) return console.error('Channel not found in guild!');
 
         console.log('Posting announcement...');
@@ -97,7 +87,7 @@ cron.schedule('*/1 * * * *', async () => {
 
         await channel.send({ content: msg });
 
-        // Reset counts and cooldown
+        // Reset counts & cooldown
         reviewCounts = {};
         lastMentionTracker = {};
         fs.writeFileSync('reviewCounts.json', JSON.stringify(reviewCounts, null, 2));
@@ -107,5 +97,5 @@ cron.schedule('*/1 * * * *', async () => {
     }
 }, { timezone: "Asia/Manila" });
 
-// Login
+// LOGIN
 client.login(process.env.BOT_TOKEN);
