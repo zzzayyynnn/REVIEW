@@ -12,7 +12,7 @@ const client = new Client({
     partials: [Partials.Channel]
 });
 
-// CONFIG - test server
+// CONFIG - Test server & channel
 const GUILD_ID = '868686126561505280';
 const CHANNEL_ID = '868686126561505282';
 const MASTER_ROLE_ID = '123456789012345678';
@@ -28,22 +28,25 @@ if (fs.existsSync('reviewCounts.json')) {
 client.once('ready', async () => {
     console.log(`Bot is online as ${client.user.tag}`);
 
-    // Show connected guilds
+    // List connected guilds
     console.log('Connected guilds:');
     client.guilds.cache.forEach(guild => {
         console.log(`- ${guild.name} (ID: ${guild.id})`);
     });
 });
 
-// === AUTO COUNT SA MENTION WITH COOLDOWN ===
+// === AUTO COUNT SA MENTION WITH PER-PAIR COOLDOWN ===
 client.on('messageCreate', async message => {
-    if (!message.guild || message.author.bot) return;
+    // Restrict to specific guild
+    if (!message.guild || message.guild.id !== GUILD_ID) return;
+    if (message.author.bot) return;
 
     if (message.mentions.members.size > 0) {
         message.mentions.members.forEach(member => {
             const targetId = member.id;
             const mentionerId = message.author.id;
 
+            // Per-pair cooldown
             if (lastMentionTracker[targetId] === mentionerId) return;
 
             lastMentionTracker[targetId] = mentionerId;
