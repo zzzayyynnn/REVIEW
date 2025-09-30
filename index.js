@@ -12,7 +12,7 @@ const client = new Client({
     partials: [Partials.Channel]
 });
 
-// CONFIG
+// CONFIG - Locked to specific guild & channel
 const GUILD_ID = '868686126561505280';
 const CHANNEL_ID = '868686126561505282';
 const MASTER_ROLE_ID = '123456789012345678';
@@ -28,10 +28,13 @@ if (fs.existsSync('reviewCounts.json')) {
 client.once('ready', async () => {
     console.log(`Bot is online as ${client.user.tag}`);
 
-    // Show connected guilds
-    console.log('Connected guilds:');
+    // List connected guilds and channels for debug
+    console.log('Connected guilds and channels:');
     client.guilds.cache.forEach(guild => {
-        console.log(`- ${guild.name} (ID: ${guild.id})`);
+        console.log(`${guild.name} (ID: ${guild.id})`);
+        guild.channels.cache.forEach(channel => {
+            console.log(`- ${channel.name} (ID: ${channel.id})`);
+        });
     });
 });
 
