@@ -12,15 +12,13 @@ const client = new Client({
     partials: [Partials.Channel]
 });
 
-// CONFIG - Locked sa iyong server
-const GUILD_ID = '1397616661024211085';       // Guild ID
-const CHANNEL_ID = '1399357204330451045';     // Announcement channel
-const MASTER_ROLE_ID = '1421545043214340166'; // Master role na ma-ping
-
+// CONFIG
+const CHANNEL_ID = '1399357204330451045'; // Announcement channel
+const MASTER_ROLE_ID = '1421545043214340166'; // Master role ID
 let reviewCounts = {};
-let lastMentionTracker = {};
+let lastMentionTracker = {}; // Track last user who mentioned each target
 
-// Load existing counts
+// Load existing counts from file
 if (fs.existsSync('reviewCounts.json')) {
     reviewCounts = JSON.parse(fs.readFileSync('reviewCounts.json', 'utf8'));
 }
@@ -29,65 +27,71 @@ client.once('ready', () => {
     console.log(`Bot is online as ${client.user.tag}`);
 });
 
-// === AUTO COUNT SA MENTION WITH PER-PAIR COOLDOWN ===
+// === AUTO COUNT SA MENTION SA SPECIFIC CHANNEL LANG WITH PER-PAIR COOLDOWN ===
 client.on('messageCreate', async message => {
-    if (!message.guild || message.guild.id !== GUILD_ID) return;
-    if (message.author.bot) return;
+    if (!message.guild || message.author.bot) return;
+
+    // Only count mentions in the announcement channel
+    if (message.channel.id !== CHANNEL_ID) return;
 
     if (message.mentions.members.size > 0) {
         message.mentions.members.forEach(member => {
             const targetId = member.id;
             const mentionerId = message.author.id;
 
-            // Per-pair cooldown
+            // Check per-pair cooldown
             if (lastMentionTracker[targetId] === mentionerId) return;
 
+            // Update tracker
             lastMentionTracker[targetId] = mentionerId;
 
+            // Add review count
             if (!reviewCounts[targetId]) reviewCounts[targetId] = 0;
             reviewCounts[targetId] += 1;
 
             console.log(`${message.author.username} mentioned ${member.user.username} → counted`);
         });
 
+        // Save counts
         fs.writeFileSync('reviewCounts.json', JSON.stringify(reviewCounts, null, 2));
     }
 });
 
-// === TEST ANNOUNCEMENT EVERY 2 MINUTES ===
+// === ANNOUNCEMENT EVERY 2 MINUTES (FOR TEST, PWEDE ICHANGE SA DAILY) ===
 cron.schedule('*/2 * * * *', async () => {
     try {
-        const guild = await client.guilds.fetch(GUILD_ID);
-        const channel = await guild.channels.fetch(CHANNEL_ID);
-        if (!channel) return console.error('Channel not found in guild!');
+        const channel = await client.channels.fetch(CHANNEL_ID);
+        if (!channel) return console.error('Channel not found!');
 
         console.log('Posting announcement...');
 
         const sorted = Object.entries(reviewCounts).sort((a, b) => b[1] - a[1]);
         const top5 = sorted.slice(0, 5);
 
-        let msg = '🏆 *Top Reviewed Today* 🏆\n\n';
+        let msg = '**🏆 Top Reviewed Today 🏆**\n\n';
         const medals = ['🥇', '🥈', '🥉'];
 
+        // Top 5 section
         for (let i = 0; i < top5.length; i++) {
             const [userId, count] = top5[i];
             const medal = medals[i] || '🔹';
             msg += `${medal} <@${userId}> — ${count} reviews\n`;
         }
 
+        // Full list (Who Reviewed Today)
         if (sorted.length > 0) {
-            msg += '\n📝 *Who Reviewed Today* 📝\n';
+            msg += '\n**📝 Who Reviewed Today 📝**\n';
             for (const [userId, count] of sorted) {
                 msg += `<@${userId}> — ${count} reviews\n`;
             }
         }
 
-        msg += `\n📌 *Note:* Reviews are the basis for promotion, keep helping others.`;
+        msg += '\n📌 *Note:* Reviews are the basis for promotion, so keep it up by assisting with tickets and helping others.';
         msg += `\n<@&${MASTER_ROLE_ID}>`;
 
         await channel.send({ content: msg });
 
-        // Reset counts & cooldown
+        // Reset counts and cooldown tracker after announcement
         reviewCounts = {};
         lastMentionTracker = {};
         fs.writeFileSync('reviewCounts.json', JSON.stringify(reviewCounts, null, 2));
@@ -97,5 +101,5 @@ cron.schedule('*/2 * * * *', async () => {
     }
 }, { timezone: "Asia/Manila" });
 
-// LOGIN
+// Login using BOT_TOKEN from environment variable
 client.login(process.env.BOT_TOKEN);
