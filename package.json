@@ -1,14 +1,23 @@
 {
   "name": "discord-review-bot",
   "version": "1.0.0",
-  "description": "Automatic Discord review bot with per-pair cooldown and daily leaderboard",
+  "private": true,
+  "description": "A Discord bot for review management with daily announcements",
   "main": "index.js",
-  "type": "module",
   "scripts": {
-    "start": "node index.js"
+    "start": "node index.js",
+    "dev": "nodemon index.js"
+  },
+  "engines": {
+    "node": "22.x"
   },
   "dependencies": {
-    "discord.js": "^14.13.0",
-    "node-cron": "^3.0.2"
-  }
+    "discord.js": "^14.11.0",
+    "node-cron": "^3.0.2",
+    "dotenv": "^16.3.1"
+  },
+  "devDependencies": {
+    "nodemon": "^3.0.3"
+  },
+  "license": "MIT"
 }
