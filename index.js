@@ -13,21 +13,29 @@ const client = new Client({
 });
 
 // CONFIG - test server
-const CHANNEL_ID = '868686126561505282'; // Test channel
-const MASTER_ROLE_ID = '123456789012345678'; // Replace with actual role if needed
-let reviewCounts = {};
-let lastMentionTracker = {}; // Track last user who mentioned each target
+const GUILD_ID = '868686126561505280';
+const CHANNEL_ID = '868686126561505282';
+const MASTER_ROLE_ID = '123456789012345678';
 
-// Load existing counts from file
+let reviewCounts = {};
+let lastMentionTracker = {};
+
+// Load existing counts
 if (fs.existsSync('reviewCounts.json')) {
     reviewCounts = JSON.parse(fs.readFileSync('reviewCounts.json', 'utf8'));
 }
 
-client.once('ready', () => {
+client.once('ready', async () => {
     console.log(`Bot is online as ${client.user.tag}`);
+
+    // Show connected guilds
+    console.log('Connected guilds:');
+    client.guilds.cache.forEach(guild => {
+        console.log(`- ${guild.name} (ID: ${guild.id})`);
+    });
 });
 
-// === AUTO COUNT SA MENTION WITH PER-PAIR COOLDOWN ===
+// === AUTO COUNT SA MENTION WITH COOLDOWN ===
 client.on('messageCreate', async message => {
     if (!message.guild || message.author.bot) return;
 
@@ -36,13 +44,10 @@ client.on('messageCreate', async message => {
             const targetId = member.id;
             const mentionerId = message.author.id;
 
-            // Check per-pair cooldown
             if (lastMentionTracker[targetId] === mentionerId) return;
 
-            // Update tracker
             lastMentionTracker[targetId] = mentionerId;
 
-            // Add review count
             if (!reviewCounts[targetId]) reviewCounts[targetId] = 0;
             reviewCounts[targetId] += 1;
         });
@@ -51,42 +56,48 @@ client.on('messageCreate', async message => {
     }
 });
 
-// === TEST ANNOUNCEMENT EVERY 2 MINUTES ===
-cron.schedule('*/2 * * * *', async () => {
-    const channel = await client.channels.fetch(CHANNEL_ID);
-    if (!channel) return console.error('Channel not found!');
+// === TEST ANNOUNCEMENT EVERY 1 MINUTE ===
+cron.schedule('*/1 * * * *', async () => {
+    try {
+        const guild = await client.guilds.fetch(GUILD_ID);
+        const channel = guild.channels.cache.get(CHANNEL_ID);
+        if (!channel) return console.error('Channel not found in guild!');
 
-    const sorted = Object.entries(reviewCounts).sort((a, b) => b[1] - a[1]);
-    const top5 = sorted.slice(0, 5);
+        console.log('Posting announcement...');
 
-    let msg = '🏆 *Top Reviewed Today* 🏆\n\n';
-    const medals = ['🥇', '🥈', '🥉'];
+        const sorted = Object.entries(reviewCounts).sort((a, b) => b[1] - a[1]);
+        const top5 = sorted.slice(0, 5);
 
-    // Top 5 section
-    for (let i = 0; i < top5.length; i++) {
-        const [userId, count] = top5[i];
-        const medal = medals[i] || '🔹';
-        msg += `${medal} <@${userId}> — ${count} reviews\n`;
-    }
+        let msg = '🏆 *Top Reviewed Today* 🏆\n\n';
+        const medals = ['🥇', '🥈', '🥉'];
 
-    // Full list (Who Reviewed Today)
-    if (sorted.length > 0) {
-        msg += '\n📝 *Who Reviewed Today* 📝\n';
-        for (const [userId, count] of sorted) {
-            msg += `<@${userId}> — ${count} reviews\n`;
+        for (let i = 0; i < top5.length; i++) {
+            const [userId, count] = top5[i];
+            const medal = medals[i] || '🔹';
+            msg += `${medal} <@${userId}> — ${count} reviews\n`;
         }
+
+        if (sorted.length > 0) {
+            msg += '\n📝 *Who Reviewed Today* 📝\n';
+            for (const [userId, count] of sorted) {
+                msg += `<@${userId}> — ${count} reviews\n`;
+            }
+        }
+
+        msg += `\n📌 *Note:* Reviews are the basis for promotion, keep helping others.`;
+        msg += `\n<@&${MASTER_ROLE_ID}>`;
+
+        await channel.send({ content: msg });
+
+        // Reset counts and cooldown
+        reviewCounts = {};
+        lastMentionTracker = {};
+        fs.writeFileSync('reviewCounts.json', JSON.stringify(reviewCounts, null, 2));
+
+    } catch (err) {
+        console.error('Error posting announcement:', err);
     }
-
-    msg += '\n📌 *Note:* Reviews are the basis for promotion, so keep it up by assisting with tickets and helping others.';
-    msg += `\n<@&${MASTER_ROLE_ID}>`; // Ping Master role
-
-    await channel.send({ content: msg });
-
-    // Reset counts and cooldown tracker
-    reviewCounts = {};
-    lastMentionTracker = {};
-    fs.writeFileSync('reviewCounts.json', JSON.stringify(reviewCounts, null, 2));
 }, { timezone: "Asia/Manila" });
 
-// Login using BOT_TOKEN from environment variable
+// Login
 client.login(process.env.BOT_TOKEN);
